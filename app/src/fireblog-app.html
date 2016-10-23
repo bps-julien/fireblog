@@ -1,0 +1,618 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-icons/social-icons.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-slides/paper-slides.html">
+<link rel="import" href="../bower_components/paper-slides/paper-slide.html">
+<link rel="import" href="../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-app.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-query.html">
+
+<dom-module id="fireblog-app">
+  <template>
+    <style>
+      :host {
+        --app-primary-color: #4285f4;
+        --app-secondary-color: black;
+
+        display: block;
+      }
+
+      app-header {
+        color: #fff;
+        background-color: var(--app-primary-color);
+      }
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      .drawer-list {
+        margin: 0 20px;
+      }
+
+      .drawer-list a {
+        display: block;
+
+        padding: 0 16px;
+
+        text-decoration: none;
+
+        color: var(--app-secondary-color);
+
+        line-height: 40px;
+      }
+
+      .drawer-list a.iron-selected {
+        color: black;
+
+        font-weight: bold;
+      }
+
+      .wrapper {
+        max-width: 1170px;
+        margin: 48px auto;
+      }
+      .wrapper:after {
+        content: '';
+        display: block;
+        clear: both;
+      }
+
+      article,
+      aside {
+        float: left;
+        box-sizing: border-box;
+        padding: 0 16px;
+      }
+
+      article {
+        width: 70%;
+      }
+
+      aside {
+        width: 30%;
+      }
+
+      paper-card {
+        margin-bottom: 32px;
+        display: block;
+        --paper-card-header-color: #fff;
+      }
+      paper-card .post-content {
+        white-space: pre-line;
+        margin-top: 16px;
+      }
+
+      .post-comments {
+        margin-bottom: 32px;
+      }
+
+      paper-card.comment {
+        @apply(--layout-horizontal);
+        margin-bottom: 0;
+      }
+      paper-card.comment .comment-content {
+        @apply(--layout-flex);
+      }
+      paper-card.comment .comment-profile {
+        float: left;
+        width: 100px;
+        box-sizing: border-box;
+        padding: 16px;
+      }
+      paper-card.comment h4 {
+        margin: 0;
+      }
+      paper-card.comment .comment-profile .comment-avatar {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 12px auto;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        border-radius: 50%;
+      }
+      paper-card.comment .comment-message {
+        white-space: pre-line;
+      }
+
+      .avatar {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-color: #999;
+        display: inline-block;
+        vertical-align: middle;
+        width: 32px;
+        height: 32px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        margin-right: 12px;
+      }
+
+      .user-btn {
+        font-size: 14px;
+      }
+
+      .load-more {
+        text-align: center;
+      }
+      .load-more paper-button {
+        background: #fff;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      paper-slides {
+        height: 500px;
+        margin: 0 16px 32px 16px;
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        border-radius: 2px;
+      }
+
+      paper-slide {
+        --paper-slide-content: {
+          color: #fff;
+          text-align: center;
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 80px;
+          text-transform: uppercase;
+          padding: 0 16px;
+        }
+      }
+    </style>
+
+    <firebase-app 
+      id="firebase"
+      name="fireblog-491ca"
+      auth-domain="fireblog-491ca.firebaseapp.com"
+      database-url="https://fireblog-491ca.firebaseio.com"
+      api-key="AIzaSyDcenlELBeOOp1P5rjb1uejdsqiMjbiphk">
+    </firebase-app>
+    <firebase-auth
+      id="auth"
+      app-name="fireblog-491ca"
+      user="{{user}}"
+      provider="{{provider}}"
+      on-error="handleError">
+    </firebase-auth>
+    <!--<firebase-query
+      id="latestPosts"
+      app-name="fireblog-491ca"
+      path="/posts"
+      data="{{latestPosts}}"
+      limit-to-last="{{limitLatest}}"
+      order-by-child="created_at">
+    </firebase-query>
+    <firebase-query
+      id="featuredPosts"
+      app-name="fireblog-491ca"
+      path="/posts"
+      data="{{featuredPosts}}"
+      limit-to-last="5"
+      order-by-child="like_count">
+    </firebase-query>-->
+
+    <app-location route="{{route}}"></app-location>
+    <app-route
+        route="{{route}}"
+        pattern="/:page"
+        data="{{routeData}}"
+        tail="{{subroute}}"></app-route>
+    <app-route
+        route="{{subroute}}"
+        pattern="/:slug"
+        data="{{slugData}}"></app-route>
+
+    <app-drawer-layout fullbleed force-narrow>
+      <!-- Drawer content -->
+      <app-drawer>
+        <app-toolbar>Menu</app-toolbar>
+        <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+          <a name="home" href="/">Home</a>
+        </iron-selector>
+      </app-drawer>
+
+      <!-- Main content -->
+      <app-header-layout has-scrolling-region>
+
+        <app-header condenses reveals effects="waterfall">
+          <app-toolbar>
+            <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>
+            <div main-title>My Blog</div>
+            
+            <template is="dom-if" if={{!user}}>
+              <paper-icon-button icon="social:person" dialog="loginDialog" on-tap="_toggleDialog"></paper-icon-button>
+            </template>
+            
+            <template is="dom-if" if={{user}}>
+              <paper-button class="user-btn" icon="social:person">
+                <div class="avatar" style$="background-image: url({{user.photoURL}});"></div>
+                {{user.displayName}}
+              </paper-button>
+              <paper-icon-button icon="exit-to-app" on-tap="_signOut"></paper-icon-button>
+            </template>
+            
+          </app-toolbar>
+        </app-header>
+
+        <iron-pages
+            selected="[[page]]"
+            attr-for-selected="name"
+            fallback-selection="view404"
+            role="main">
+
+          <section name="home">
+            
+            <div class="wrapper">
+              <paper-slides>
+                <template is="dom-repeat" items="{{latestPosts}}" as=post index-as=index sort="_sortPostsByDate">
+                  <paper-slide src="{{post.picture}}" href="/post/{{post.key}}">
+                    <h1>{{post.title}}</h1>
+                  </paper-slide>
+                </template>
+              </paper-slides>
+
+              <article class="posts">
+                <template is="dom-repeat" items="{{latestPosts}}" as=post index-as=index sort="_sortPostsByDate">
+                  
+                  <paper-card heading="{{post.title}}" alt="{{post.title}}" image="{{post.picture}}" elevation="1" animated-shadow="false">
+                    <div class="card-content">
+                      <small>posted {{post.created_at}}</small>
+                      <p>{{_excerpt(post.content, 120)}}</p>
+                    </div>
+                    <div class="card-actions">
+                      <paper-icon-button icon$="{{_isLiked(user, post, 'favorite', 'favorite-border')}}" likes="{{post.likes}}" post="{{post.key}}" on-tap="_toggleLike"></paper-icon-button>
+                      <paper-icon-button icon="social:share"></paper-icon-button>
+                      <a href$="/post/{{post.key}}"><paper-button style="float: right;">Read More</paper-button></a>
+                    </div>
+                  </paper-card>
+
+                </template>
+
+                <div class="load-more">
+                  <paper-button raised on-tap="_loadMore">Load More</paper-button>
+                </div>
+
+              </article>
+
+              <aside>
+                <template is="dom-repeat" items="{{featuredPosts}}" as=post index-as=index sort="_sortPostsByLikes">
+                  
+                  <paper-card heading="{{post.title}}" alt="{{post.title}}" image="{{post.picture}}" elevation="1" animated-shadow="false">
+                    <div class="card-actions">
+                      <paper-icon-button icon$="{{_isLiked(user, post, 'favorite', 'favorite-border')}}" likes="{{post.likes}}" post="{{post.key}}" on-tap="_toggleLike"></paper-icon-button>
+                      <paper-icon-button icon="social:share"></paper-icon-button>
+                      <a href$="/post/{{post.key}}"><paper-button style="float: right;">Read More</paper-button></a>
+                    </div>
+                  </paper-card>
+
+                </template>
+              </aside>
+            </div>
+            
+          </section>
+
+          <section name="post">
+
+            <div class="wrapper">
+
+              <article class="posts">
+
+                <paper-card alt="{{selectedPost.title}}" image="{{selectedPost.picture}}" elevation="1" animated-shadow="false">
+                  <div class="card-content">
+                    <h1>{{selectedPost.title}}</h1>
+                    <!--<div class="actions">
+                      <paper-icon-button icon$="{{_isLiked(user, selectedPost, 'favorite', 'favorite-border')}}" likes="{{selectedPost.likes}}" post="{{selectedPost.key}}" on-tap="_toggleLike"></paper-icon-button>
+                      <paper-icon-button icon="social:share"></paper-icon-button>
+                    </div>-->
+                    <small>posted {{selectedPost.created_at}}</small>
+                    <div class="post-content">{{selectedPost.content}}</div>
+                  </div>
+                  <div class="card-actions">
+                    <paper-icon-button icon$="{{_isLiked(user, selectedPost, 'favorite', 'favorite-border')}}" likes="{{selectedPost.likes}}" post="{{selectedPost.key}}" on-tap="_toggleLike"></paper-icon-button>
+                    <paper-icon-button icon="social:share"></paper-icon-button>
+                  </div>
+                </paper-card>
+
+                <div class="post-comments">
+                  
+                  <template is="dom-repeat" items={{selectedPost.comments}} as=comment index-as=index>
+                    
+                    <paper-card class="comment" elevation="1" animated-shadow="false">
+                      <div class="comment-profile">
+                        <div class="comment-avatar" style$="background-image: url({{comment.user.photoURL}})"></div>
+                      </div>
+                      <div class="comment-content">
+                        <div class="card-content">
+                          <h4 class="comment-user">{{comment.user.displayName}}</h4>
+                          <div class="comment-message">{{comment.message}}</div>
+                        </div>
+                        <div class="card-actions">
+                          <paper-icon-button icon="favorite-border"></paper-icon-button>
+                        </div>
+                      </div>
+                    </paper-card>
+
+                  </template>
+                  
+                </div>
+
+                <paper-card elevation="1" animated-shadow="false">
+                  <div class="card-content">
+                    <paper-textarea id="commentMessage" maxlength="500"></paper-textarea>
+                  </div>
+                  <div class="card-actions">
+                    <paper-button on-tap="_sendComment">Send</paper-button>
+                  </div>
+                </paper-card>
+
+              </article>
+
+              <aside>
+                <template is="dom-repeat" items="{{_exclude(selectedPost, latestPosts)}}" as=post index-as=index sort="_sortPostsByDate">
+                  
+                  <paper-card heading="{{post.title}}" alt="{{post.title}}" image="{{post.picture}}" elevation="1" animated-shadow="false">
+                    <div class="card-actions">
+                      <paper-icon-button icon$="{{_isLiked(user, post, 'favorite', 'favorite-border')}}" likes="{{post.likes}}" post="{{post.key}}" on-tap="_toggleLike"></paper-icon-button>
+                      <paper-icon-button icon="social:share"></paper-icon-button>
+                      <a href$="/post/{{post.key}}"><paper-button style="float: right;">Read More</paper-button></a>
+                    </div>
+                  </paper-card>
+
+                </template>
+              </aside>
+
+            </div>
+
+          </section>
+
+          <section name="view404">Whoops... I think you're lost :(</section>
+
+        </iron-pages>
+
+        <paper-dialog id="loginDialog">
+          <h2>Sign In</h2>
+          <paper-dialog-scrollable>
+            <paper-button raised provider="facebook" on-tap="_selectProvider">Facebook</paper-button>
+            <paper-button raised provider="twitter" on-tap="_selectProvider">Twitter</paper-button>
+            <paper-button raised provider="google" on-tap="_selectProvider">Google</paper-button>
+          </paper-dialog-scrollable>
+        </paper-dialog>
+
+      </app-header-layout>
+    </app-drawer-layout>
+  </template>
+
+  <script>
+
+    Polymer({
+      is: 'fireblog-app',
+
+      properties: {
+
+        page: {
+          type: String,
+          reflectToAttribute: true,
+        },
+
+        slug: {
+          type: String,
+          reflectToAttribute: true,
+        },
+
+        latestPosts: {
+          type: Array,
+          value: [],
+          observer: '_postsChanged'
+        },
+
+        displayedPosts: {
+          type: Array,
+          value: []
+        },
+
+        limitLatest: {
+          type: Number,
+          value: 5
+        },
+
+        featuredPosts: {
+          type: Array,
+          observer: '_postsChanged'
+        },
+
+        user: {
+          type: Object,
+          observer: '_userChanged'
+        }
+
+      },
+
+      observers: [
+        '_routePageChanged(routeData.page)',
+        '_routeSlugChanged(slugData.slug)',
+      ],
+
+      ready: function(){
+        if(!this.db) this.db = this.$.firebase.app.database();
+        this._bindLatest();
+        var that = this;
+        this.db.ref('/posts').orderByChild('like_count').limitToLast(5).on('value', function(data){
+          var _posts = data.val();
+          that.featuredPosts = that._objectToArray(_posts);
+        });
+      },
+
+      _bindLatest: function(){
+        var that = this;
+        if(this.ref_latest) this.ref_latest.off();
+        this.ref_latest = this.db.ref('/posts').orderByChild('created_at').limitToLast(this.limitLatest);
+        this.ref_latest.on('value', function(data){
+          var _posts = data.val();
+          that.latestPosts = that._objectToArray(_posts);
+        });
+      },
+
+      _objectToArray: function(o){
+        var a = [];
+        for (var key in o) {
+            if (o.hasOwnProperty(key)) {
+                var element = o[key];
+                element.key = key;
+                a.push(element);
+            }
+        }
+        return a;
+      },
+
+      _isLiked: function(user, post, t, f){
+        return user && post && post.likes && post.likes[user.uid] ? t : f;
+      },
+
+      _routePageChanged: function(page) {
+        if(!this.db) this.db = this.$.firebase.app.database();
+        this.page = page || 'home';
+        console.log('PAGE', this.page);
+      },
+
+      _routeSlugChanged: function(slug) {
+        this.slug = slug;
+        console.log('SLUG', this.slug);
+        if(this.page === "post" && slug){
+          var that = this;
+          if(this.ref_post) this.ref_post.off();
+          this.ref_post = this.db.ref('/posts/' + slug);
+          this.ref_post.on('value', function(data){
+            var post = data.val();
+            post.key = data.key;
+            post.comments = that._objectToArray(post.comments);
+            that.selectedPost = post;
+          });
+        }
+      },
+
+      _sendComment: function(){
+        if(this.ref_post && this.user){
+          var message = this.$.commentMessage.value;
+          if(message && message.length > 0 && message.length <= 500) this.ref_post.child('comments').push({ message: message, user: this._formatUser(this.user), timestamp: new Date().getTime() });
+          this.$.commentMessage.value = "";
+        }
+      },
+
+      _formatUser: function(){
+        if(this.user) return { displayName: this.user.displayName, photoURL: this.user.photoURL, uid: this.user.uid };
+        return false;
+      },
+
+      _postsChanged: function(newPosts, oldPosts){
+        console.log('POSTS', newPosts);
+      },
+
+      _userChanged: function(user, pastUser){
+        console.log(user);
+        this.$.loginDialog.close();
+      },
+
+      _sortPostsByDate: function(a, b){
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      },
+
+      _sortPostsByLikes: function(a, b){
+        return b.like_count - a.like_count;
+      },
+
+      _return: function(v){
+        return v || [];
+      },
+
+      _exclude: function(o, a){
+        a = a.slice();
+        var i = o && a ? a.findIndex(function(x){ return x.key === o.key; }) : -1;
+        if(i > -1){
+          a.splice(i, 1);
+        }
+        return a.slice(0, 5);
+      },
+
+      _excerpt: function(content, length){
+        return content && length && content.length > length ? content.substring(0, length - 3) + '...' : content;
+      },
+
+      _slice: function(a, offset, length){
+        if(!Array.isArray(a)) return a;
+        a = a.slice();
+        return a.slice(offset, length);
+      },
+
+      _loadMore: function(){
+        /*for(var i = 0; i < posts.length; i++){
+          this.db.ref('/posts').push(posts[i]);
+        }*/
+        this.limitLatest += 5;
+        this._bindLatest();
+      },
+
+      _toggleLike: function(e){
+        var likes = e.currentTarget.likes;
+        var id = e.currentTarget.post;
+        console.log(id, likes);
+        if(id && this.user){
+          if(likes && likes[this.user.uid]) this.db.ref('/posts/' + id + '/likes/' + this.user.uid).remove();
+          else this.db.ref('/posts/' + id + '/likes/' + this.user.uid).set(true);
+        }
+      },
+
+      _selectProvider: function(e){
+        this.provider = e.currentTarget.getAttribute('provider');
+        this.$.auth.signInWithPopup().then(function(user){
+          //console.log(user);
+        }).catch(function(error){
+          console.error(error);
+        });
+      },
+
+      _signOut: function(){
+        this.$.auth.signOut();
+      },
+
+      _toggleDialog: function(e){
+        var d = e.currentTarget.getAttribute('dialog');
+        if(d && this.$[d]) this.$[d].toggle();
+      },
+
+      /*_pageChanged: function(page) {
+        var resolvedPageUrl = this.resolveUrl('my-' + page + '.html');
+        this.importHref(resolvedPageUrl, null, this._showPage404, true);
+      },*/
+
+      _showPage404: function() {
+        this.page = 'view404';
+      },
+
+      handleError: function(err){
+        console.error(err);
+      },
+
+    });
+  </script>
+</dom-module>
